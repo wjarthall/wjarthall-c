@@ -1,1 +1,86 @@
-export default async function handler(req, res) {  res.setHeader("Access-Control-Allow-Origin", "*");  res.setHeader("Access-Control-Allow-Methods", "GET,OPTIONS");  res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");  if (req.method === "OPTIONS") {    return res.status(200).end();  }  if (req.method !== "GET") {    return res.status(405).json({ error: "Method not allowed" });  }  try {    const notionRes = await fetch(      `https://api.notion.com/v1/data_sources/${process.env.NOTION_DATA_SOURCE_ID}/query`,      {        method: "POST",        headers: {          Authorization: `Bearer ${process.env.NOTION_API_KEY}`,          "Notion-Version": "2026-03-11",          "Content-Type": "application/json",        },        body: JSON.stringify({          page_size: 100,        }),      }    );    if (!notionRes.ok) {      const text = await notionRes.text();      return res.status(500).json({ error: text });    }    const data = await notionRes.json();    const typeMap = {      ∞¯ø¨: "show",      »ﬁπ´: "off",      ¥Î∞¸: "rental",      ∏∂∞®: "closed",    };    const scheduleStore = {};    for (const page of data.results || []) {      const props = page.properties || {};      const title =        props["¿œ¡§∏Ì"]?.title?.[0]?.plain_text?.trim() ||        props["Title"]?.title?.[0]?.plain_text?.trim() ||        "¿œ¡§";      const date =        props["≥Ø¬•"]?.date?.start ||        props["Date"]?.date?.start ||        null;      const notionType =        props["±∏∫–"]?.select?.name ||        props["Select"]?.select?.name ||        "∞¯ø¨";      if (!date) continue;      const key = date.slice(0, 10);      if (!scheduleStore[key]) scheduleStore[key] = [];      scheduleStore[key].push({        type: typeMap[notionType] || "show",        title,      });    }    return res.status(200).json(scheduleStore);  } catch (error) {    return res.status(500).json({ error: String(error) });  }}
+module.exports = async function handler(req, res) {
+  res.setHeader("Access-Control-Allow-Origin", "*");
+  res.setHeader("Access-Control-Allow-Methods", "GET,OPTIONS");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
+
+  if (req.method === "OPTIONS") {
+    return res.status(200).end();
+  }
+
+  if (req.method !== "GET") {
+    return res.status(405).json({ error: "Method not allowed" });
+  }
+
+  try {
+    const notionRes = await fetch(
+      `https://api.notion.com/v1/data_sources/${process.env.NOTION_DATA_SOURCE_ID}/query`,
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${process.env.NOTION_API_KEY}`,
+          "Notion-Version": "2025-09-03",
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          page_size: 100
+        })
+      }
+    );
+
+    const text = await notionRes.text();
+
+    if (!notionRes.ok) {
+      return res.status(500).json({
+        error: "Notion API error",
+        status: notionRes.status,
+        body: text
+      });
+    }
+
+    const data = JSON.parse(text);
+
+    const typeMap = {
+      Í≥µÏó∞: "show",
+      Ìú¥Î¨¥: "off",
+      ÎåÄÍ¥Ä: "rental",
+      ÎßàÍ∞ê: "closed"
+    };
+
+    const scheduleStore = {};
+
+    for (const page of data.results || []) {
+      const props = page.properties || {};
+
+      const title =
+        props["ÏùºÏ†ïÎ™Ö"]?.title?.[0]?.plain_text?.trim() ||
+        props["Title"]?.title?.[0]?.plain_text?.trim() ||
+        "ÏùºÏ†ï";
+
+      const date =
+        props["ÎÇ†Ïßú"]?.date?.start ||
+        props["Date"]?.date?.start ||
+        null;
+
+      const notionType =
+        props["Íµ¨Î∂Ñ"]?.select?.name ||
+        props["Select"]?.select?.name ||
+        "Í≥µÏó∞";
+
+      if (!date) continue;
+
+      const key = date.slice(0, 10);
+
+      if (!scheduleStore[key]) scheduleStore[key] = [];
+      scheduleStore[key].push({
+        type: typeMap[notionType] || "show",
+        title
+      });
+    }
+
+    return res.status(200).json(scheduleStore);
+  } catch (error) {
+    return res.status(500).json({
+      error: String(error)
+    });
+  }
+};
