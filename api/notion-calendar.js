@@ -1,22 +1,38 @@
 const { Client } = require("@notionhq/client");
 
 const notion = new Client({
-  auth: process.env.NOTION_TOKEN
+  auth: process.env.NOTION_TOKEN,
+  notionVersion: "2026-03-11"
 });
 
 module.exports = async function handler(req, res) {
   try {
     const databaseId = process.env.NOTION_DATABASE_ID;
 
-    const response = await notion.databases.query({
-      database_id: databaseId,
-      page_size: 100,
+    // 1) database에서 data source ID 찾기
+    const db = await notion.databases.retrieve({
+      database_id: databaseId
+    });
+
+    const dataSourceId = db.data_sources?.[0]?.id;
+
+    if (!dataSourceId) {
+      return res.status(500).json({
+        error: "Notion API error",
+        message: "data source ID를 찾을 수 없습니다."
+      });
+    }
+
+    // 2) data source의 row 조회
+    const response = await notion.dataSources.query({
+      data_source_id: dataSourceId,
       sorts: [
         {
           property: "날짜",
           direction: "ascending"
         }
-      ]
+      ],
+      page_size: 100
     });
 
     const result = {};
@@ -57,7 +73,6 @@ module.exports = async function handler(req, res) {
 
     res.setHeader("Access-Control-Allow-Origin", "*");
     return res.status(200).json(result);
-
   } catch (error) {
     console.error(error);
     return res.status(500).json({
