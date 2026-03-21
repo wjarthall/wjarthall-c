@@ -1,0 +1,7 @@
+{
+  "name": "dreamplayon-calendar",
+  "version": "1.0.0",
+  "dependencies": {
+    "@notionhq/client": "^5.12.0"
+  }
+}
